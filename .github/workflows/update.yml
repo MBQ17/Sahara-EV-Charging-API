@@ -1,3 +1,4 @@
+
 name: Sahara EV Tariff Updater
 
 on:
@@ -13,24 +14,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      # 3. Install Dependencies
       - name: Install Libraries
         run: pip install -r requirements.txt
 
+      # 4. Run EV Tariff Scraper
       - name: Run EV Scraper
         run: python scraper.py
 
+      # 5. Prepare Vercel Static Files
+      - name: Prepare Vercel Static Files
+        run: |
+          mkdir -p public
+          cp data.json public/data.json
+
+      # 6. Commit Updated JSON Files
       - name: Commit Updated JSON
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json
+
+          git add data.json public/data.json
+
           git diff --cached --quiet || git commit -m "Update EV charging rates"
+
           git push
