@@ -1,0 +1,209 @@
+{
+    "status": "success",
+    "country": "Pakistan",
+    "source": "https://saraicharge.com/chargers/",
+    "last_updated": "2026-11-14T05:39:30.744188+00:00",
+    "total_stations_priced": 125,
+    "missing_prices": 6,
+    "unit": "PKR/kWh",
+    "cities": [
+        {
+            "city": "Abbottabad",
+            "stations_priced": 3,
+            "average_price_per_kwh": 135.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Bahawalpur",
+            "stations_priced": 2,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Balakot",
+            "stations_priced": 3,
+            "average_price_per_kwh": 130.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Chiniot",
+            "stations_priced": 4,
+            "average_price_per_kwh": 122.5,
+            "currency": "PKR"
+        },
+        {
+            "city": "Dadu",
+            "stations_priced": 2,
+            "average_price_per_kwh": 115.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Faisalabad",
+            "stations_priced": 6,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Gojra",
+            "stations_priced": 3,
+            "average_price_per_kwh": 113.33,
+            "currency": "PKR"
+        },
+        {
+            "city": "Gujranwala",
+            "stations_priced": 1,
+            "average_price_per_kwh": 125.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Gujrat",
+            "stations_priced": 1,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Hyderabad",
+            "stations_priced": 1,
+            "average_price_per_kwh": 150.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Islamabad",
+            "stations_priced": 11,
+            "average_price_per_kwh": 114.09,
+            "currency": "PKR"
+        },
+        {
+            "city": "Jhelum",
+            "stations_priced": 1,
+            "average_price_per_kwh": 150.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Karachi",
+            "stations_priced": 14,
+            "average_price_per_kwh": 108.21,
+            "currency": "PKR"
+        },
+        {
+            "city": "Kasur",
+            "stations_priced": 1,
+            "average_price_per_kwh": 100.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Khairpur",
+            "stations_priced": 1,
+            "average_price_per_kwh": 90.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Khanpur",
+            "stations_priced": 2,
+            "average_price_per_kwh": 200.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Kotri",
+            "stations_priced": 2,
+            "average_price_per_kwh": 110.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Lahore",
+            "stations_priced": 22,
+            "average_price_per_kwh": 105.23,
+            "currency": "PKR"
+        },
+        {
+            "city": "Mandi Bahauddin",
+            "stations_priced": 3,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Mingora",
+            "stations_priced": 1,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Multan",
+            "stations_priced": 7,
+            "average_price_per_kwh": 117.14,
+            "currency": "PKR"
+        },
+        {
+            "city": "Murree",
+            "stations_priced": 5,
+            "average_price_per_kwh": 254.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Muzaffargarh",
+            "stations_priced": 2,
+            "average_price_per_kwh": 150.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Naran",
+            "stations_priced": 1,
+            "average_price_per_kwh": 300.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Peshawar",
+            "stations_priced": 2,
+            "average_price_per_kwh": 120.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Rahim Yar Khan",
+            "stations_priced": 1,
+            "average_price_per_kwh": 200.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Rawalpindi",
+            "stations_priced": 8,
+            "average_price_per_kwh": 113.75,
+            "currency": "PKR"
+        },
+        {
+            "city": "Sahiwal",
+            "stations_priced": 1,
+            "average_price_per_kwh": 140.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Sargodha",
+            "stations_priced": 6,
+            "average_price_per_kwh": 140.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Sheikhupura",
+            "stations_priced": 1,
+            "average_price_per_kwh": 200.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Sialkot",
+            "stations_priced": 3,
+            "average_price_per_kwh": 128.33,
+            "currency": "PKR"
+        },
+        {
+            "city": "Sukkur",
+            "stations_priced": 2,
+            "average_price_per_kwh": 187.0,
+            "currency": "PKR"
+        },
+        {
+            "city": "Wah",
+            "stations_priced": 2,
+            "average_price_per_kwh": 110.0,
+            "currency": "PKR"
+        }
+    ]
+}
