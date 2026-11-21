@@ -1,226 +1,313 @@
 
-import re
 import json
+import re
 from datetime import datetime, timezone
-from collections import defaultdict
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-URL = "https://saraicharge.com/chargers/"
-OUTPUT_FILE = Path("data.json")
 
+SOURCE_URL = "https://saraicharge.com/chargers/"
+OUTPUT_FILE = Path(__file__).parent / "public" / "data.json"
 
-def extract_price(text):
-    """Extract price in PKR/kWh."""
-
-    match = re.search(
-        r"(?:PKR|Rs\.?)\s*([\d,]+(?:\.\d+)?)\s*/\s*kWh\b",
-        text,
-        re.IGNORECASE
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
     )
+}
 
-    if not match:
-        return None
-
-    return float(match.group(1).replace(",", ""))
+TIMEOUT = 30
 
 
-def normalize(text):
-    return re.sub(r"\s+", " ", text).strip().lower()
-
-
-def scrape_city_averages():
-
-    print("Connecting to Sarai Charge...")
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; SaharaEVResearch/1.0)"
-    }
-
+def get_page():
     response = requests.get(
-        URL,
-        headers=headers,
-        timeout=30
+        SOURCE_URL,
+        headers=HEADERS,
+        timeout=TIMEOUT
     )
-
     response.raise_for_status()
+    return BeautifulSoup(response.text, "html.parser")
 
-    soup = BeautifulSoup(response.text, "html.parser")
 
-    station_table = None
+def get_station_data(soup):
+    stations = []
+    current_city = None
+    seen_urls = set()
 
-    for table in soup.find_all("table"):
+    # Read city headings and station links in document order.
+    for element in soup.find_all(["h2", "h3", "h4", "a"]):
 
-        for row in table.find_all("tr"):
+        if element.name in ("h2", "h3", "h4"):
+            heading = element.get_text(" ", strip=True)
 
-            cells = row.find_all(["th", "td"], recursive=False)
+            match = re.match(
+                r"^(.+?)\s+\d+\s+stations?\b",
+                heading,
+                re.IGNORECASE
+            )
 
-            headings = [
-                normalize(cell.get_text(" ", strip=True))
-                for cell in cells
+            if match:
+                current_city = match.group(1).strip()
+
+        elif element.name == "a":
+
+            href = element.get("href", "")
+
+            if not href:
+                continue
+
+            station_url = urljoin(SOURCE_URL, href)
+            path_parts = [
+                part for part in urlparse(station_url).path.split("/")
+                if part
             ]
 
-            if (
-                "station" in headings
-                and "city" in headings
-                and "price" in headings
-            ):
-                station_table = table
-                break
+            # Station detail URLs have at least three path parts:
+            # chargers / station-slug / (additional path if applicable)
+            # City overview URLs are only chargers / city-slug.
+            if len(path_parts) < 2:
+                continue
 
-        if station_table:
-            break
+            if path_parts[0] != "chargers":
+                continue
 
-    if station_table is None:
-        raise ValueError("Station table not found.")
+            if len(path_parts) == 2:
+                continue
 
-    rows = station_table.find_all("tr")
+            if station_url in seen_urls:
+                continue
 
-    header_names = []
-    header_row = None
+            name = element.get_text(" ", strip=True)
 
-    for row in rows:
+            if not name:
+                continue
 
-        cells = row.find_all(["th", "td"], recursive=False)
+            # Station information is listed in the surrounding list item.
+            parent = element.find_parent("li")
 
-        names = [
-            normalize(cell.get_text(" ", strip=True))
-            for cell in cells
+            if parent is None:
+                continue
+
+            details = parent.get_text(" ", strip=True)
+
+            if not re.search(r"\b(?:DC|AC)\b", details, re.I):
+                continue
+
+            power_match = re.search(
+                r"(\d+(?:\.\d+)?)\s*kW\b",
+                details,
+                re.IGNORECASE
+            )
+
+            price_match = re.search(
+                r"PKR\s*([\d,]+)\s*(?:/|per)\s*kWh",
+                details,
+                re.IGNORECASE
+            )
+
+            power = (
+                float(power_match.group(1))
+                if power_match else None
+            )
+
+            price = (
+                float(price_match.group(1).replace(",", ""))
+                if price_match else None
+            )
+
+            charger_type = (
+                "DC" if re.search(r"\bDC\b", details, re.I)
+                else "AC"
+            )
+
+            if not current_city:
+                continue
+
+            station = {
+                "name": name,
+                "city": current_city,
+                "power_kw": power,
+                "charger_type": charger_type,
+                "price_per_kwh": price,
+                "currency": "PKR",
+                "source_url": station_url
+            }
+
+            stations.append(station)
+            seen_urls.add(station_url)
+
+    if not stations:
+        raise ValueError(
+            "No stations were extracted. "
+            "The website HTML structure may have changed."
+        )
+
+    return stations
+
+
+def calculate_city_rates(stations):
+    cities = {}
+
+    for station in stations:
+        city = station["city"]
+
+        if city not in cities:
+            cities[city] = []
+
+        cities[city].append(station)
+
+    results = {}
+
+    for city, city_stations in cities.items():
+
+        priced_stations = [
+            s for s in city_stations
+            if s["price_per_kwh"] is not None
         ]
 
+        powered_stations = [
+            s for s in city_stations
+            if s["power_kw"] is not None
+        ]
+
+        cheapest = (
+            min(
+                priced_stations,
+                key=lambda s: s["price_per_kwh"]
+            )
+            if priced_stations else None
+        )
+
+        fastest = (
+            max(
+                powered_stations,
+                key=lambda s: s["power_kw"]
+            )
+            if powered_stations else None
+        )
+
+        fastest_price = (
+            fastest["price_per_kwh"]
+            if fastest else None
+        )
+
         if (
-            "station" in names
-            and "city" in names
-            and "price" in names
+            cheapest is not None
+            and fastest_price is not None
         ):
-            header_row = row
-            header_names = names
-            break
+            average_rate = round(
+                (cheapest["price_per_kwh"] + fastest_price) / 2,
+                2
+            )
+        else:
+            average_rate = None
 
-    if header_row is None:
-        raise ValueError("Could not identify station columns.")
+        results[city] = {
+            "total_stations": len(city_stations),
 
-    city_index = header_names.index("city")
-    price_index = header_names.index("price")
+            "cheapest_station": cheapest,
+            "cheapest_rate": (
+                cheapest["price_per_kwh"]
+                if cheapest else None
+            ),
 
-    city_prices = defaultdict(list)
+            "fastest_station": fastest,
+            "fastest_power_kw": (
+                fastest["power_kw"]
+                if fastest else None
+            ),
+            "fastest_station_rate": fastest_price,
 
-    station_count = 0
-    missing_prices = 0
+            "average_rate": average_rate,
+            "currency": "PKR",
+            "unit": "kWh"
+        }
 
-    for row in rows:
+    return results
 
-        if row == header_row:
-            continue
 
-        cells = row.find_all(["th", "td"], recursive=False)
+def save_data(stations, cities):
+    OUTPUT_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
-        if len(cells) <= max(city_index, price_index):
-            continue
+    old_data = {}
 
-        city = cells[city_index].get_text(" ", strip=True)
+    if OUTPUT_FILE.exists():
+        try:
+            with open(OUTPUT_FILE, "r", encoding="utf-8") as file:
+                old_data = json.load(file)
+        except (json.JSONDecodeError, OSError):
+            old_data = {}
 
-        price_text = cells[price_index].get_text(" ", strip=True)
+    # Sort data to avoid unnecessary changes.
+    stations.sort(
+        key=lambda s: (
+            s["city"].lower(),
+            s["name"].lower()
+        )
+    )
 
-        if not city or normalize(city) == "city":
-            continue
-
-        price = extract_price(price_text)
-
-        if price is None:
-            missing_prices += 1
-            continue
-
-        city_prices[city].append(price)
-        station_count += 1
-
-    if not city_prices:
-        raise ValueError("No valid station prices found.")
-
-    # Prepare API data
-
-    city_data = []
-
-    for city, prices in sorted(city_prices.items()):
-
-        average = sum(prices) / len(prices)
-
-        city_data.append({
-            "city": city,
-            "stations_priced": len(prices),
-            "average_price_per_kwh": round(average, 2),
-            "currency": "PKR"
-        })
-
-    # Create JSON response
-
-    data = {
-        "status": "success",
-        "country": "Pakistan",
-        "source": URL,
-        "last_updated": datetime.now(
-            timezone.utc
-        ).isoformat(),
-        "total_stations_priced": station_count,
-        "missing_prices": missing_prices,
-        "unit": "PKR/kWh",
-        "cities": city_data
+    new_content = {
+        "source": SOURCE_URL,
+        "total_stations": len(stations),
+        "total_cities": len(cities),
+        "stations": stations,
+        "cities": cities
     }
 
-    # Save only after successful scraping and validation
+    old_content = {
+        key: old_data.get(key)
+        for key in new_content
+    }
 
-    temp_file = OUTPUT_FILE.with_suffix(".tmp")
+    if old_content == new_content:
+        print("No data changes detected.")
+        print(
+            "Last updated:",
+            old_data.get("last_updated")
+        )
+        return
 
-    with open(temp_file, "w", encoding="utf-8") as file:
+    now = datetime.now(timezone.utc).isoformat()
 
+    new_content["last_checked"] = now
+    new_content["last_updated"] = now
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as file:
         json.dump(
-            data,
+            new_content,
             file,
             indent=4,
             ensure_ascii=False
         )
 
-    temp_file.replace(OUTPUT_FILE)
-
-    # Display report
-
-    print("\nSAHARA EV CHARGING PRICE REPORT")
-
-    print("-" * 65)
-
-    for item in city_data:
-
-        print(
-            f"{item['city']:<25}"
-            f"{item['stations_priced']:>10}"
-            f"{item['average_price_per_kwh']:>15.2f} PKR"
-        )
-
-    print("-" * 65)
-
-    print("Total stations:", station_count)
-    print("Missing prices:", missing_prices)
-
-    print("\nAPI JSON updated successfully!")
+    print("Data successfully updated.")
+    print("Total stations:", len(stations))
+    print("Total cities:", len(cities))
+    print("Last updated:", now)
 
 
 def main():
+    print("Starting Sahara EV Tariff Scraper...")
 
-    try:
+    soup = get_page()
 
-        scrape_city_averages()
+    print("Website successfully accessed.")
 
-    except requests.RequestException as error:
+    stations = get_station_data(soup)
 
-        print("Network error:", error)
-        raise
+    print("Stations extracted:", len(stations))
 
-    except Exception as error:
+    cities = calculate_city_rates(stations)
 
-        print("Scraping failed:", error)
-        raise
+    save_data(stations, cities)
+
+    print("Scraper completed successfully.")
 
 
 if __name__ == "__main__":
