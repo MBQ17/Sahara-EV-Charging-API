@@ -18,27 +18,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # 3. Install Dependencies
       - name: Install Libraries
         run: pip install -r requirements.txt
 
-      # 4. Run EV Tariff Scraper
       - name: Run EV Scraper
         run: python scraper.py
 
-      # 5. Prepare Vercel Static Files
-      - name: Prepare Vercel Static Files
+      - name: Validate JSON
+        run: |
+          python -m json.tool data.json > /dev/null
+
+      - name: Prepare Cloudflare Assets
         run: |
           mkdir -p public
           cp data.json public/data.json
 
-      # 6. Commit Updated JSON Files
+          python -m json.tool public/data.json > /dev/null
+
       - name: Commit Updated JSON
         run: |
           git config user.name "github-actions[bot]"
@@ -46,6 +47,13 @@ jobs:
 
           git add data.json public/data.json
 
-          git diff --cached --quiet || git commit -m "Update EV charging rates"
+          git diff --cached --quiet || \
+            git commit -m "Update EV charging rates"
 
           git push
+
+      - name: Deploy Cloudflare Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
