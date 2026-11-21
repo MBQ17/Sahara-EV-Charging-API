@@ -1,8 +1,0 @@
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sahara-ev-charging-api",
-  "compatibility_date": "2026-11-21",
-  "assets": {
-    "directory": "./public"
-  }
-}
